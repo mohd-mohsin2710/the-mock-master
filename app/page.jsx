@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Logo from '../components/Logo';
 
 export default function Home() {
   // ==================== STATES MANAGEMENT ====================
@@ -17,18 +18,22 @@ export default function Home() {
   const [timeLeft, setTimeLeft] = useState(3600);
   const [isHydrated, setIsHydrated] = useState(false);
 
+  const [showSubmitModal, setShowSubmitModal] = useState(false);
+
   // Safely get active questions from state
   const activeQuestions = questions[currentSection] || [];
   const currentQuestion = activeQuestions[currentQuestionIdx];
 
+  // Yeh count karega ki current section mein kitne questions 'answered' ya 'review' status mein hain
+  const attemptedInSection = activeQuestions.filter(
+    (q) =>
+      responses[q.id]?.status === "answered" ||
+      responses[q.id]?.status === "review",
+  ).length;
+
   // Handle Submit Test
   const handleSubmitTest = async () => {
-    // Ek baar confirmation poocho
-    const confirmSubmit = window.confirm(
-      "Are you sure you want to submit the test? 🤔",
-    );
-    if (!confirmSubmit) return;
-
+    setShowSubmitModal(false);
     try {
       const res = await fetch("/api/submit-test", {
         method: "POST",
@@ -41,22 +46,10 @@ export default function Home() {
       const result = await res.json();
 
       if (result.success) {
-        // Submit hone ke baad local storage saaf karo taaki agla test fresh ho
         localStorage.removeItem("mock_responses");
         localStorage.removeItem("mock_timer");
-
-        // Filhal ke liye screen par score ka dhamaal alert dikhao
-        alert(`
-          🎉 TEST SUBMITTED SUCCESSFULLY! 🎉
-          ----------------------------------
-          Total Questions: ${result.data.totalQuestions}
-          Attempted: ${result.data.attempted}
-          Unattempted: ${result.data.unattempted}
-          Correct: ${result.data.correct}
-          Wrong: ${result.data.wrong}
-          
-          🔥 YOUR FINAL SCORE: ${result.data.score} Marks
-        `);
+        // Naye result page par bhej do
+        window.location.href = `/result/${result.resultId}`;
       }
     } catch (error) {
       console.error("Error submitting test:", error);
@@ -214,14 +207,13 @@ export default function Home() {
     <main className="min-h-screen bg-[#f1f5f9] flex flex-col select-none font-sans text-gray-800">
       {/* ==================== 1. TOP HEADER ==================== */}
       <header className="bg-[#1e293b] text-white h-14 px-4 flex justify-between items-center shadow-md border-b border-[#334155]">
-        <div className="flex items-center gap-3">
-          <span className="bg-[#3b82f6] text-xs font-bold px-2 py-1 rounded-sm uppercase">
-            Exam Portal
-          </span>
-          <h1 className="font-bold text-sm md:text-base tracking-wide text-slate-200">
-            TheMockMaster — SSC CGL
-          </h1>
-        </div>
+          <div className="flex items-center gap-3">
+            <Logo className="w-10 h-10 brightness-110" />
+            <div className="h-6 w-px bg-slate-600 hidden sm:block"></div>
+            <h1 className="font-bold text-sm md:text-base tracking-wide text-slate-200">
+              SSC CGL Mock Test
+            </h1>
+          </div>
 
         <div className="flex items-center gap-4">
           <div className="bg-[#0f172a] px-3 py-1.5 rounded-md border border-[#334155] text-amber-400 font-mono font-bold text-sm md:text-base shadow-inner">
@@ -240,7 +232,7 @@ export default function Home() {
                 Mohammad Mohsin
               </p>
             </div>
-            <div className="w-9 h-9 rounded-full bg-slate-600 border border-slate-500 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+            <div className="w-9 h-9 rounded-full bg-slate-600 border border-slate-500 flex items-center justify-center text-white font-bold text-sm shadow-sm hover:cursor-pointer">
               MM
             </div>
           </div>
@@ -248,7 +240,7 @@ export default function Home() {
       </header>
 
       {/* ==================== 2. SECTION TABS BAR ==================== */}
-      <div className="bg-[#e2e8f0] border-b border-slate-300 px-4 pt-1 flex gap-1 overflow-x-auto text-xs font-bold">
+      <div className="bg-[#e2e8f0] border-b border-slate-300 px-4 pt-1 flex gap-1 overflow-x-auto text-xs font-bold ">
         {sections.map((section) => (
           <button
             key={section}
@@ -257,7 +249,7 @@ export default function Home() {
               setCurrentQuestionIdx(0);
               setTempSelectedOption(null);
             }}
-            className={`px-4 py-2.5 rounded-t-md transition-all ${
+            className={`px-4 py-2.5 rounded-t-md transition-all hover:cursor-pointer ${
               currentSection === section
                 ? "bg-[#ffffff] text-[#1e293b] border-t-2 border-[#1e293b] shadow-sm"
                 : "bg-transparent text-slate-600 hover:bg-slate-200/60"
@@ -316,7 +308,7 @@ export default function Home() {
                     <div
                       key={index}
                       onClick={handleOptionToggle}
-                      className={`flex items-center gap-3 p-3.5 border rounded-lg cursor-pointer transition-all shadow-sm border-l-4 ${
+                      className={`flex items-center gap-3 p-3.5 border rounded-lg hover:cursor-pointer transition-all shadow-sm border-l-4 ${
                         isChecked
                           ? "bg-blue-50/50 border-blue-500 border-l-blue-600"
                           : "border-slate-200 hover:bg-slate-50"
@@ -328,7 +320,7 @@ export default function Home() {
                         value={option} // Value bhi ab pura text jayegi
                         checked={isChecked}
                         readOnly
-                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                        className="w-4 h-4 text-blue-600 focus:ring-blue-500 hover:cursor-pointer"
                       />
                       <span className="text-xs font-bold text-slate-400 font-mono">
                         {optionLetter}.
@@ -352,20 +344,20 @@ export default function Home() {
             <div className="flex gap-2">
               <button
                 onClick={handleMarkReview}
-                className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded shadow transition-all active:scale-95"
+                className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded shadow transition-all active:scale-95 hover:cursor-pointer"
               >
                 Mark for Review & Next
               </button>
               <button
                 onClick={handleClear}
-                className="bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-4 py-2.5 rounded shadow-sm transition-all active:scale-95"
+                className="bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-4 py-2.5 rounded shadow-sm transition-all active:scale-95 hover:cursor-pointer"
               >
                 Clear Response
               </button>
             </div>
             <button
               onClick={handleSaveNext}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded shadow transition-all active:scale-95 tracking-wide"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded shadow transition-all active:scale-95 tracking-wide hover:cursor-pointer"
             >
               Save & Next
             </button>
@@ -375,14 +367,20 @@ export default function Home() {
         {/* RIGHT SIDE: Question Palette Sidebar */}
         <div className="w-full md:w-80 bg-slate-50 p-4 flex flex-col justify-between border-t md:border-t-0 border-slate-200 overflow-y-auto">
           <div>
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-200 pb-1">
-              Question Palette
-            </h3>
+            <div className="flex justify-between items-center mb-4 border-b border-slate-200 pb-1">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Question Palette
+              </h3>
+              {/* Naya Counter Yahan Hai */}
+              <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                Attempted: {attemptedInSection} / {activeQuestions.length}
+              </span>
+            </div>
             <div className="grid grid-cols-5 gap-2.5 p-1 max-h-70 overflow-y-auto">
               {activeQuestions.map((q, i) => {
                 const qStatus = responses[q.id]?.status;
                 let btnClass =
-                  "bg-white text-slate-700 border-slate-300 hover:bg-slate-100";
+                  "bg-white text-slate-700 border-slate-300 hover:bg-slate-100 hover:cursor-pointer";
 
                 if (qStatus === "answered")
                   btnClass = "bg-green-600 text-white border-green-700";
@@ -430,15 +428,65 @@ export default function Home() {
                 Not Visited
               </div>
             </div>
-            <button
-              onClick={handleSubmitTest}
-              className="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 rounded-lg text-xs shadow-md tracking-wider transition-all uppercase active:scale-95"
+            <button 
+              onClick={() => setShowSubmitModal(true)} // Alert ki jagah Modal khulega
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold py-3 rounded-lg text-xs shadow-md tracking-wider transition-all uppercase active:scale-95 hover:cursor-pointer"
             >
               Submit Test
             </button>
           </div>
         </div>
       </div>
+
+      {/* ==================== CUSTOM SUBMIT MODAL ==================== */}
+        {showSubmitModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop (Piche ka andhera) - Is par click karne se bhi modal band ho jayega */}
+            <div 
+              onClick={() => setShowSubmitModal(false)} 
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            ></div>
+            
+            {/* Modal Box */}
+            <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 animate-in fade-in zoom-in duration-200">
+              
+             {/* ❌ TOP-RIGHT CLOSE ICON */}
+                <button 
+                  onClick={() => setShowSubmitModal(false)}
+                  className="absolute top-3 right-4 text-black hover:text-red-600 transition-all text-2xl font-bold leading-none select-none p-1 hover:hover:cursor-pointer"
+                  style={{ cursor: 'pointer' }}
+                  aria-label="Close modal"
+                >
+                  &times;
+                </button>
+
+              <div className="text-center mt-2">
+                <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+                  <i className="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">Final Submission?</h3>
+                <p className="text-slate-500 text-sm mb-6">
+                  You have attempted <span className="font-bold text-slate-800">{Object.keys(responses).length}</span> questions. Do you want to end the test and see your results?
+                </p>
+                
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => setShowSubmitModal(false)}
+                    className="flex-1 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all hover:hover:cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSubmitTest}
+                    className="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl shadow-lg shadow-red-200 transition-all hover:cursor-pointer"
+                  >
+                    Yes, Submit
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
     </main>
   );
 }
